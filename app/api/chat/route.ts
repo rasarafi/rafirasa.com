@@ -4,9 +4,13 @@ import { getClientIP, checkRateLimit } from '@/lib/rate-limit';
 import { validateChatRequest } from '@/lib/validate-chat';
 import { checkSuspiciousInput } from '@/lib/chat-monitor';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Created on first request, not at import: `next build` evaluates this module
+// while collecting route config, and the key only exists at runtime.
+let openai: OpenAI | null = null;
+function client(): OpenAI {
+  openai ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return openai;
+}
 
 export async function POST(request: Request) {
   const ip = getClientIP(request);
@@ -42,7 +46,7 @@ export async function POST(request: Request) {
 
   // Forward to OpenAI
   try {
-    const stream = await openai.chat.completions.create({
+    const stream = await client().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
